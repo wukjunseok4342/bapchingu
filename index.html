@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>body{margin:0}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>다시, 밥친구</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<style>
+/* 레이아웃: 한 줄 세로 피드. 밥약 하나 = 학식 식권 한 장 (왼쪽 날짜 스텁 + 절취선 + 본문) */
+:root{
+  --bg:#F3F5EE; --paper:#FFFFFF; --ink:#1E2A22; --muted:#5E6B62; --line:#DCE2D6;
+  --tray:#1F7A5C; --tray-ink:#FFFFFF; --egg:#F4C430; --egg-ink:#3A2E00; --soft:#E6EFE8; --warn:#B3362B;
+  --display:"Jua","IBM Plex Sans KR",system-ui,sans-serif;
+  --body:"IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141A16; --paper:#1D2520; --ink:#E7EEE8; --muted:#9AA79E; --line:#2E3A33;
+  --tray:#3FAE87; --tray-ink:#0E1A14; --egg:#E9B820; --egg-ink:#231B00; --soft:#24302A; --warn:#F08A7E; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141A16; --paper:#1D2520; --ink:#E7EEE8; --muted:#9AA79E; --line:#2E3A33;
+  --tray:#3FAE87; --tray-ink:#0E1A14; --egg:#E9B820; --egg-ink:#231B00; --soft:#24302A; --warn:#F08A7E; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.55}
+.wrap{max-width:640px;margin:0 auto;padding-block:28px 64px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:20px}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--egg);outline-offset:2px;border-radius:8px}
+
+/* 머리 */
+header{display:flex;flex-direction:column;gap:6px}
+.brand{font-family:var(--display);font-size:clamp(34px,8vw,46px);line-height:1.1;letter-spacing:-.01em;margin:0;text-wrap:balance}
+.brand b{color:var(--tray);font-weight:400}
+.tag{margin:0;color:var(--muted)}
+.me{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}
+.me label{color:var(--muted);font-size:14px}
+.me input{width:9em;border:1.5px solid var(--line);background:var(--paper);border-radius:999px;padding:6px 14px}
+.mode{font-size:13px;color:var(--muted);background:var(--soft);border-radius:10px;padding:8px 12px;margin:0}
+.mode strong{color:var(--ink)}
+
+/* 도구줄 */
+.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.chip{border:1.5px solid var(--line);background:var(--paper);border-radius:999px;padding:6px 14px;cursor:pointer;font-size:14px}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.spacer{flex:1}
+.btn{border:0;border-radius:12px;padding:10px 16px;cursor:pointer;font-weight:600}
+.btn.main{background:var(--tray);color:var(--tray-ink)}
+.btn.ghost{background:transparent;border:1.5px solid var(--line)}
+.btn.join{background:var(--egg);color:var(--egg-ink)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.link{background:none;border:0;padding:0;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:13px}
+
+/* 새 밥약 폼 */
+form{background:var(--paper);border:1.5px solid var(--line);border-radius:18px;padding:18px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+form h2{grid-column:1/-1;margin:0;font-family:var(--display);font-weight:400;font-size:22px}
+.f{display:flex;flex-direction:column;gap:4px;min-width:0}
+.f.full{grid-column:1/-1}
+.f span{font-size:13px;color:var(--muted)}
+.f input,.f select{border:1.5px solid var(--line);background:var(--bg);border-radius:10px;padding:9px 11px;width:100%}
+.actions{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end}
+@media (max-width:460px){form{grid-template-columns:1fr}}
+
+/* 식권 카드 */
+.list{display:flex;flex-direction:column;gap:14px;margin:0;padding:0;list-style:none}
+.ticket{display:grid;grid-template-columns:92px 1fr;background:var(--paper);border-radius:16px;position:relative;
+  box-shadow:0 1px 0 var(--line),0 6px 18px -12px rgba(0,0,0,.25)}
+.stub{background:var(--tray);color:var(--tray-ink);border-radius:16px 0 0 16px;padding:14px 8px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-align:center;font-variant-numeric:tabular-nums}
+.stub .dow{font-size:13px;opacity:.85}
+.stub .day{font-family:var(--display);font-size:30px;line-height:1}
+.stub .time{font-size:14px;font-weight:600}
+.stub .soon{margin-top:6px;font-size:11px;background:var(--egg);color:var(--egg-ink);border-radius:999px;padding:1px 8px;font-weight:600}
+/* 절취선 + 반원 홈 */
+.ticket::before,.ticket::after{content:"";position:absolute;left:83px;width:18px;height:18px;border-radius:50%;background:var(--bg)}
+.ticket::before{top:-9px}.ticket::after{bottom:-9px}
+.body{padding:14px 16px 14px 18px;border-left:2px dashed color-mix(in srgb,var(--tray) 45%,var(--paper));display:flex;flex-direction:column;gap:8px;min-width:0}
+.body h3{margin:0;font-size:17px;line-height:1.35;overflow-wrap:anywhere}
+.meta{margin:0;color:var(--muted);font-size:14px;overflow-wrap:anywhere}
+.note{margin:0;font-size:14px;background:var(--soft);border-radius:8px;padding:6px 10px;overflow-wrap:anywhere}
+.seats{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.dot{width:12px;height:12px;border-radius:50%;border:2px solid var(--tray)}
+.dot.on{background:var(--tray)}
+.dot.host{background:var(--egg);border-color:var(--egg)}
+.count{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;margin-left:4px}
+.people{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
+.people li{font-size:13px;background:var(--soft);border-radius:999px;padding:2px 10px}
+.people li.h{background:var(--egg);color:var(--egg-ink)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.full-tag{font-size:13px;font-weight:600;color:var(--muted)}
+.ex{font-size:11px;border:1px solid var(--line);border-radius:6px;padding:0 6px;color:var(--muted);margin-left:6px;vertical-align:2px}
+
+.empty{text-align:center;color:var(--muted);background:var(--paper);border:1.5px dashed var(--line);border-radius:16px;padding:32px 16px}
+.empty p{margin:4px 0}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));
+  background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;max-width:calc(100% - 32px);z-index:5}
+.toast.err{background:var(--warn);color:#fff}
+footer{color:var(--muted);font-size:12px;text-align:center}
+@media (prefers-reduced-motion:no-preference){.ticket{animation:in .35s ease both}@keyframes in{from{transform:translateY(6px)}to{transform:none}}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1 class="brand">다시, <b>밥친구</b></h1>
+    <p class="tag">복학하고 같이 밥 먹을 사람이 없을 때. 밥약을 열거나, 열린 밥약에 숟가락 얹기.</p>
+    <div class="me">
+      <label for="myName">나는</label>
+      <input id="myName" maxlength="12" placeholder="이름 또는 별명" autocomplete="nickname">
+      <span class="tag" style="font-size:13px">이 기기에 기억돼요</span>
+    </div>
+  </header>
+
+  <p class="mode" id="mode"></p>
+
+  <div class="bar" role="toolbar" aria-label="보기">
+    <button class="chip" id="fAll" aria-pressed="true">전체</button>
+    <button class="chip" id="fOpen" aria-pressed="false">자리 있음</button>
+    <span class="spacer"></span>
+    <button class="btn ghost" id="refresh" title="새로고침">↻</button>
+    <button class="btn main" id="openForm">+ 밥약 열기</button>
+  </div>
+
+  <form id="form" hidden>
+    <h2>밥약 열기</h2>
+    <label class="f full"><span>무슨 밥?</span><input id="fTitle" maxlength="40" required placeholder="예) 학식 같이 먹어요, 마라탕 1명 구함"></label>
+    <label class="f"><span>어디서</span><input id="fPlace" maxlength="40" required placeholder="예) 학생회관 식당"></label>
+    <label class="f"><span>언제</span><input id="fWhen" type="datetime-local" required></label>
+    <label class="f"><span>몇 명 (나 포함)</span>
+      <select id="fCap"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option><option>8</option></select></label>
+    <label class="f"><span>한마디 (선택)</span><input id="fNote" maxlength="100" placeholder="예) 경영 23학번 복학생이에요"></label>
+    <div class="actions">
+      <button type="button" class="btn ghost" id="closeForm">닫기</button>
+      <button type="submit" class="btn main" id="submitBtn">올리기</button>
+    </div>
+  </form>
+
+  <ul class="list" id="list" aria-live="polite"></ul>
+  <footer>지난 밥약은 1시간 뒤 목록에서 사라져요</footer>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* ▼ Supabase를 연결하면 여러 명이 같이 씁니다. 비워 두면 이 기기에서만 도는 체험 모드. */
+const SUPABASE_URL = "https://dckdmqdjsmddjtnlrewl.supabase.co";
+const SUPABASE_KEY = "sb_publishable_FlOylRwf61FMncT-4Ani1A_PFA5_wwr"; // Publishable(anon) key — 공개돼도 되는 키. service_role 키는 절대 넣지 마세요.
+
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d){ try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+const uuid = () => (crypto.randomUUID ? crypto.randomUUID() :
+  "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => { const r = Math.random()*16|0; return (c === "x" ? r : (r&3|8)).toString(16); }));
+let TOKEN = store.get("bap.token", null); if (!TOKEN) { TOKEN = uuid(); store.set("bap.token", TOKEN); }
+const myName = () => $("myName").value.trim();
+
+/* ── 데이터: 체험 모드 (이 기기 localStorage) ── */
+function localApi(){
+  const KEY = "bap.demo";
+  const h = n => new Date(Date.now() + n*3600e3).toISOString();
+  let db = store.get(KEY, null);
+  if (!db) db = { seq: 3, meetings: [
+    { id:1, example:true, title:"학식 같이 먹어요", place:"학생회관 1층 식당", meet_at:h(20), capacity:4, host_name:"준석", note:"복학 첫 학기라 아는 사람이 없어요", host_token:"x", joins:[{name:"민지",token:"y"}] },
+    { id:2, example:true, title:"마라탕 1명만 구해요", place:"정문 앞", meet_at:h(44), capacity:2, host_name:"도윤", note:"", host_token:"x", joins:[] },
+    { id:3, example:true, title:"공강에 카페 겸 점심", place:"중앙도서관 앞", meet_at:h(68), capacity:5, host_name:"서연", note:"군대 다녀온 사람 환영", host_token:"x", joins:[{name:"현우",token:"y"},{name:"지훈",token:"y"}] }
+  ]};
+  const save = () => store.set(KEY, db);
+  const fail = m => { throw new Error(m); };
+  return {
+    shared:false,
+    async list(){ const cut = Date.now() - 3600e3;
+      return db.meetings.filter(m => +new Date(m.meet_at) > cut).sort((a,b)=>new Date(a.meet_at)-new Date(b.meet_at))
+        .map(m => ({...m, joins:m.joins.map(j=>({name:j.name})), mine:m.host_token===TOKEN, joined:m.joins.some(j=>j.token===TOKEN)})); },
+    async create(m){ db.meetings.push({...m, id:++db.seq, host_token:TOKEN, joins:[]}); save(); },
+    async join(id, name){ const m = db.meetings.find(x=>x.id===id) || fail("없어진 밥약이에요");
+      if (m.joins.some(j=>j.name===name) || m.host_name===name) fail("이미 같은 이름이 있어요. 별명을 바꿔 주세요");
+      if (m.joins.length + 1 >= m.capacity) fail("자리가 다 찼어요");
+      m.joins.push({name, token:TOKEN}); save(); },
+    async leave(id){ const m = db.meetings.find(x=>x.id===id); if (m) m.joins = m.joins.filter(j=>j.token!==TOKEN); save(); },
+    async cancel(id){ db.meetings = db.meetings.filter(x=>!(x.id===id && x.host_token===TOKEN)); save(); }
+  };
+}
+
+/* ── 데이터: 공유 모드 (Supabase) ── */
+function supaApi(sb){
+  const mine = store.get("bap.mine", {hosted:[], joined:[]});
+  const keep = () => store.set("bap.mine", mine);
+  const nice = e => { const m = e && e.message || "";
+    if (/duplicate key/.test(m)) return "이미 같은 이름이 있어요. 별명을 바꿔 주세요";
+    if (/row-level security/.test(m)) return "지난 시간으로는 밥약을 열 수 없어요";
+    if (/Failed to fetch|NetworkError/i.test(m)) return "서버에 연결하지 못했어요. 인터넷 연결을 확인해 주세요";
+    return m || "알 수 없는 오류가 났어요"; };
+  const chk = ({error}) => { if (error) throw new Error(nice(error)); };
+  return {
+    shared:true,
+    async list(){
+      const r = await sb.from("meetings").select("id,title,place,meet_at,capacity,host_name,note,joins(name)")
+        .gte("meet_at", new Date(Date.now()-3600e3).toISOString()).order("meet_at");
+      chk(r);
+      return r.data.map(m => ({...m, mine:mine.hosted.includes(m.id) || false, joined:mine.joined.includes(m.id)}));
+    },
+    async create(m){
+      chk(await sb.from("meetings").insert({...m, host_token:TOKEN}));
+      // 방금 만든 밥약 id 찾기 (토큰은 읽을 수 없어서 내용으로 대조)
+      const r = await sb.from("meetings").select("id").eq("host_name",m.host_name).eq("title",m.title).eq("meet_at",m.meet_at).order("id",{ascending:false}).limit(1);
+      if (!r.error && r.data[0]) { mine.hosted.push(r.data[0].id); keep(); }
+    },
+    async join(id, name){ chk(await sb.from("joins").insert({meeting_id:id, name, token:TOKEN})); mine.joined.push(id); keep(); },
+    async leave(id){ chk(await sb.rpc("leave_meeting",{p_meeting:id, p_token:TOKEN})); mine.joined = mine.joined.filter(x=>x!==id); keep(); },
+    async cancel(id){ const r = await sb.rpc("cancel_meeting",{p_meeting:id, p_token:TOKEN}); chk(r);
+      if (!r.data) throw new Error("이 기기에서 연 밥약만 취소할 수 있어요"); mine.hosted = mine.hosted.filter(x=>x!==id); keep(); }
+  };
+}
+
+/* ── 화면 ── */
+let api = localApi(), rows = [], onlyOpen = false, busy = false;
+const DOW = ["일","월","화","수","목","금","토"];
+function toast(msg, err){ const t=$("toast"); t.textContent=msg; t.className="toast"+(err?" err":""); t.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>t.hidden=true, 2800); }
+function el(tag, cls, text){ const e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; }
+
+function soonLabel(d){
+  const diff = d - Date.now(), today = new Date(); today.setHours(0,0,0,0);
+  const day = Math.round((new Date(d).setHours(0,0,0,0) - today) / 864e5);
+  if (diff < 0) return "진행 중";
+  if (day === 0) return "오늘"; if (day === 1) return "내일"; return null;
+}
+
+function render(){
+  const list = $("list"); list.replaceChildren();
+  const shown = rows.filter(m => !onlyOpen || (1 + m.joins.length < m.capacity));
+  if (!shown.length){
+    const li = el("li","empty");
+    li.append(el("p",null, onlyOpen ? "자리 남은 밥약이 없어요." : "아직 열린 밥약이 없어요."), el("p",null,"‘+ 밥약 열기’로 첫 밥약을 올려 보세요."));
+    list.append(li); return;
+  }
+  for (const m of shown){
+    const d = new Date(m.meet_at), taken = 1 + m.joins.length, left = m.capacity - taken;
+    const li = el("li","ticket");
+
+    const stub = el("div","stub");
+    stub.append(el("span","dow", `${d.getMonth()+1}월 · ${DOW[d.getDay()]}`), el("span","day", d.getDate()),
+      el("span","time", d.toLocaleTimeString("ko-KR",{hour:"numeric",minute:"2-digit"})));
+    const s = soonLabel(d); if (s) stub.append(el("span","soon",s));
+
+    const body = el("div","body");
+    const h3 = el("h3",null,m.title); if (m.example) h3.append(el("span","ex","예시"));
+    body.append(h3, el("p","meta", `📍 ${m.place} · ${m.host_name} 님이 열었어요`));
+    if (m.note) body.append(el("p","note", m.note));
+
+    const seats = el("div","seats"); seats.setAttribute("aria-label", `${m.capacity}명 중 ${taken}명`);
+    for (let i=0;i<m.capacity;i++) seats.append(el("span","dot"+(i===0?" host":i<taken?" on":"")));
+    seats.append(el("span","count", left>0 ? `${taken}/${m.capacity} · ${left}자리 남음` : `${taken}/${m.capacity} · 마감`));
+    body.append(seats);
+
+    const ppl = el("ul","people"); ppl.append(el("li","h", m.host_name+" (방장)"));
+    m.joins.forEach(j => ppl.append(el("li",null,j.name))); body.append(ppl);
+
+    const row = el("div","row");
+    if (m.mine){
+      const b = el("button","link","내가 연 밥약 · 취소하기"); b.onclick = () => act(() => api.cancel(m.id), "밥약을 취소했어요"); row.append(b);
+    } else if (m.joined){
+      row.append(el("span","full-tag","✓ 참여 중"));
+      const b = el("button","link","참여 취소"); b.onclick = () => act(() => api.leave(m.id), "참여를 취소했어요"); row.append(b);
+    } else if (left > 0 && d > Date.now()){
+      const b = el("button","btn join","나도 갈래요"); b.onclick = () => {
+        const n = myName(); if (!n){ $("myName").focus(); return toast("위에 이름부터 적어 주세요", true); }
+        act(() => api.join(m.id, n), "참여했어요! 맛있게 드세요"); };
+      row.append(b);
+    } else row.append(el("span","full-tag", left>0 ? "시간이 지났어요" : "자리가 다 찼어요"));
+    body.append(row);
+
+    li.append(stub, body); list.append(li);
+  }
+}
+
+async function load(quiet){
+  try { rows = await api.list(); render(); }
+  catch(e){ if (!quiet) toast(e.message, true); }
+}
+async function act(fn, ok){
+  if (busy) return; busy = true;
+  try { await fn(); toast(ok); } catch(e){ toast(e.message, true); }
+  busy = false; load(true);
+}
+
+/* 이벤트 */
+$("myName").value = store.get("bap.name", "");
+$("myName").addEventListener("input", () => store.set("bap.name", myName()));
+const setFilter = o => { onlyOpen = o; $("fAll").setAttribute("aria-pressed", !o); $("fOpen").setAttribute("aria-pressed", o); render(); };
+$("fAll").onclick = () => setFilter(false); $("fOpen").onclick = () => setFilter(true);
+$("refresh").onclick = () => load();
+function localISO(d){ const p=n=>String(n).padStart(2,"0"); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; }
+$("openForm").onclick = () => {
+  const f=$("form"); f.hidden = !f.hidden; if (f.hidden) return;
+  const t = new Date(Date.now()+864e5); t.setHours(12,0,0,0);
+  $("fWhen").min = localISO(new Date()); if (!$("fWhen").value) $("fWhen").value = localISO(t);
+  $("fTitle").focus();
+};
+$("closeForm").onclick = () => $("form").hidden = true;
+$("form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const host = myName(); if (!host){ $("myName").focus(); return toast("위에 이름부터 적어 주세요", true); }
+  const when = new Date($("fWhen").value);
+  if (!(when > new Date())) return toast("지금보다 나중 시간으로 골라 주세요", true);
+  $("submitBtn").disabled = true;
+  await act(() => api.create({ title:$("fTitle").value.trim(), place:$("fPlace").value.trim(), meet_at:when.toISOString(),
+    capacity:+$("fCap").value, host_name:host, note:$("fNote").value.trim() || null }), "밥약을 올렸어요");
+  $("submitBtn").disabled = false; $("form").reset(); $("form").hidden = true;
+});
+
+function setMode(){
+  const m = $("mode");
+  if (api.shared){ m.innerHTML = "<strong>함께 쓰는 중</strong> · 링크를 연 모든 사람에게 같은 목록이 보여요."; }
+  else { m.innerHTML = "<strong>체험 모드</strong> · 지금은 이 기기에만 저장돼요. ‘예시’ 밥약은 샘플이에요."; }
+}
+
+/* 시작 */
+setMode(); load();
+if (SUPABASE_URL && SUPABASE_KEY){
+  const s = document.createElement("script");
+  s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js";
+  s.onload = () => { api = supaApi(window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)); setMode(); load(); };
+  s.onerror = () => toast("Supabase 라이브러리를 불러오지 못했어요", true);
+  document.head.append(s);
+}
+setInterval(() => { if (!document.hidden) load(true); }, 20000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) load(true); });
+</script>
+
+</body>
+</html>
