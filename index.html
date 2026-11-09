@@ -57,14 +57,14 @@ header{display:flex;flex-direction:column;gap:6px}
 .link{background:none;border:0;padding:0;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:13px}
 
 /* 새 밥약 폼 */
-form{background:var(--paper);border:1.5px solid var(--line);border-radius:18px;padding:18px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
-form h2{grid-column:1/-1;margin:0;font-family:var(--display);font-weight:400;font-size:22px}
+#form{background:var(--paper);border:1.5px solid var(--line);border-radius:18px;padding:18px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#form h2{grid-column:1/-1;margin:0;font-family:var(--display);font-weight:400;font-size:22px}
 .f{display:flex;flex-direction:column;gap:4px;min-width:0}
 .f.full{grid-column:1/-1}
 .f span{font-size:13px;color:var(--muted)}
 .f input,.f select{border:1.5px solid var(--line);background:var(--bg);border-radius:10px;padding:9px 11px;width:100%}
 .actions{grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end}
-@media (max-width:460px){form{grid-template-columns:1fr}}
+@media (max-width:460px){#form{grid-template-columns:1fr}}
 
 /* 식권 카드 */
 .list{display:flex;flex-direction:column;gap:14px;margin:0;padding:0;list-style:none}
@@ -95,6 +95,17 @@ form h2{grid-column:1/-1;margin:0;font-family:var(--display);font-weight:400;fon
 .full-tag{font-size:13px;font-weight:600;color:var(--muted)}
 .ex{font-size:11px;border:1px solid var(--line);border-radius:6px;padding:0 6px;color:var(--muted);margin-left:6px;vertical-align:2px}
 
+/* 채팅 */
+.chat{border-top:1.5px dashed var(--line);padding-top:10px;display:flex;flex-direction:column;gap:8px}
+.msgs{display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto;margin:0;padding:0 2px;list-style:none}
+.msg{max-width:85%;align-self:flex-start;background:var(--soft);border-radius:12px 12px 12px 4px;padding:6px 10px;font-size:14px;overflow-wrap:anywhere}
+.msg.me{align-self:flex-end;background:color-mix(in srgb,var(--tray) 20%,var(--paper));border-radius:12px 12px 4px 12px}
+.msg b{display:block;font-size:12px;font-weight:600;color:var(--muted)}
+.msg time{font-weight:400;margin-left:6px;font-variant-numeric:tabular-nums}
+.chat-empty{font-size:13px;color:var(--muted)}
+.send{display:flex;gap:6px}
+.send input{flex:1;min-width:0;border:1.5px solid var(--line);background:var(--bg);border-radius:10px;padding:8px 10px}
+.send .btn{padding:8px 14px}
 .empty{text-align:center;color:var(--muted);background:var(--paper);border:1.5px dashed var(--line);border-radius:16px;padding:32px 16px}
 .empty p{margin:4px 0}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));
@@ -169,7 +180,10 @@ function localApi(){
     { id:2, example:true, title:"마라탕 1명만 구해요", place:"정문 앞", meet_at:h(44), capacity:2, host_name:"도윤", note:"", host_token:"x", joins:[] },
     { id:3, example:true, title:"공강에 카페 겸 점심", place:"중앙도서관 앞", meet_at:h(68), capacity:5, host_name:"서연", note:"군대 다녀온 사람 환영", host_token:"x", joins:[{name:"현우",token:"y"},{name:"지훈",token:"y"}] }
   ]};
+  db.messages = db.messages || []; db.mseq = db.mseq || 0;
   const save = () => store.set(KEY, db);
+  const who = id => { const m = db.meetings.find(x=>x.id===id); if (!m) return null;
+    if (m.host_token===TOKEN) return m.host_name; const j = m.joins.find(j=>j.token===TOKEN); return j ? j.name : null; };
   const fail = m => { throw new Error(m); };
   return {
     shared:false,
@@ -182,7 +196,11 @@ function localApi(){
       if (m.joins.length + 1 >= m.capacity) fail("자리가 다 찼어요");
       m.joins.push({name, token:TOKEN}); save(); },
     async leave(id){ const m = db.meetings.find(x=>x.id===id); if (m) m.joins = m.joins.filter(j=>j.token!==TOKEN); save(); },
-    async cancel(id){ db.meetings = db.meetings.filter(x=>!(x.id===id && x.host_token===TOKEN)); save(); }
+    async cancel(id){ db.meetings = db.meetings.filter(x=>!(x.id===id && x.host_token===TOKEN)); save(); },
+    async getMsgs(id, after){ if (!who(id)) fail("참여한 사람만 채팅을 볼 수 있어요");
+      return db.messages.filter(x=>x.meeting_id===id && x.id>after); },
+    async sendMsg(id, body){ const n = who(id) || fail("참여한 사람만 채팅을 쓸 수 있어요");
+      db.messages.push({id:++db.mseq, meeting_id:id, name:n, body, created_at:new Date().toISOString()}); save(); }
   };
 }
 
@@ -213,7 +231,9 @@ function supaApi(sb){
     async join(id, name){ chk(await sb.from("joins").insert({meeting_id:id, name, token:TOKEN})); mine.joined.push(id); keep(); },
     async leave(id){ chk(await sb.rpc("leave_meeting",{p_meeting:id, p_token:TOKEN})); mine.joined = mine.joined.filter(x=>x!==id); keep(); },
     async cancel(id){ const r = await sb.rpc("cancel_meeting",{p_meeting:id, p_token:TOKEN}); chk(r);
-      if (!r.data) throw new Error("이 기기에서 연 밥약만 취소할 수 있어요"); mine.hosted = mine.hosted.filter(x=>x!==id); keep(); }
+      if (!r.data) throw new Error("이 기기에서 연 밥약만 취소할 수 있어요"); mine.hosted = mine.hosted.filter(x=>x!==id); keep(); },
+    async getMsgs(id, after){ const r = await sb.rpc("get_messages",{p_meeting:id, p_token:TOKEN, p_after:after}); chk(r); return r.data || []; },
+    async sendMsg(id, body){ chk(await sb.rpc("send_message",{p_meeting:id, p_token:TOKEN, p_body:body})); }
   };
 }
 
@@ -222,6 +242,48 @@ let api = localApi(), rows = [], onlyOpen = false, busy = false;
 const DOW = ["일","월","화","수","목","금","토"];
 function toast(msg, err){ const t=$("toast"); t.textContent=msg; t.className="toast"+(err?" err":""); t.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>t.hidden=true, 2800); }
 function el(tag, cls, text){ const e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; }
+
+/* 채팅: 열린 방만 4초마다 새 메시지 가져오기 */
+const chat = { open:new Set(), msgs:new Map(), last:new Map(), nodes:new Map() };
+const hhmm = t => new Date(t).toLocaleTimeString("ko-KR",{hour:"numeric",minute:"2-digit"});
+function chatNode(m){
+  let n = chat.nodes.get(m.id); if (n) return n;
+  n = el("div","chat");
+  const ul = el("ul","msgs"); ul.setAttribute("aria-live","polite"); ul.setAttribute("aria-label","채팅");
+  const f = el("form","send");
+  const inp = el("input"); inp.id = "chatIn"+m.id; inp.maxLength = 200; inp.placeholder = "메시지 보내기"; inp.setAttribute("aria-label","메시지"); inp.autocomplete = "off";
+  const b = el("button","btn main","보내기"); b.type = "submit";
+  f.append(inp, b);
+  f.addEventListener("submit", async e => {
+    e.preventDefault(); const t = inp.value.trim(); if (!t) return;
+    b.disabled = true;
+    try { await api.sendMsg(m.id, t); inp.value = ""; await pullChat(m.id); } catch(err){ toast(err.message, true); }
+    b.disabled = false; inp.focus();
+  });
+  n.append(ul, f); n._ul = ul; chat.nodes.set(m.id, n);
+  return n;
+}
+function drawMsgs(id){
+  const n = chat.nodes.get(id); if (!n) return;
+  const ul = n._ul, list = chat.msgs.get(id) || [], me = myName();
+  const nearBottom = ul.scrollHeight - ul.scrollTop - ul.clientHeight < 40;
+  ul.replaceChildren();
+  if (!list.length) ul.append(el("li","chat-empty","아직 메시지가 없어요. 먼저 인사해 보세요."));
+  for (const x of list){
+    const li = el("li","msg"+(x.name===me?" me":"")), who = el("b",null,x.name);
+    who.append(el("time",null,hhmm(x.created_at))); li.append(who, document.createTextNode(x.body)); ul.append(li);
+  }
+  if (nearBottom || !ul.dataset.seen){ ul.scrollTop = ul.scrollHeight; ul.dataset.seen = "1"; }
+}
+async function pullChat(id){
+  try {
+    const got = await api.getMsgs(id, chat.last.get(id) || 0);
+    if (got.length){ chat.msgs.set(id, [...(chat.msgs.get(id)||[]), ...got]); chat.last.set(id, got[got.length-1].id); drawMsgs(id); }
+    else if (!chat.msgs.has(id)){ chat.msgs.set(id, []); drawMsgs(id); }
+  } catch(e){ chat.open.delete(id); toast(e.message, true); render(); }
+}
+function resetChat(id){ chat.open.delete(id); chat.msgs.delete(id); chat.last.delete(id); chat.nodes.delete(id); }
+setInterval(() => { if (!document.hidden) chat.open.forEach(pullChat); }, 4000);
 
 function soonLabel(d){
   const diff = d - Date.now(), today = new Date(); today.setHours(0,0,0,0);
@@ -261,11 +323,17 @@ function render(){
     m.joins.forEach(j => ppl.append(el("li",null,j.name))); body.append(ppl);
 
     const row = el("div","row");
+    if (m.mine || m.joined){
+      const open = chat.open.has(m.id);
+      const c = el("button","btn ghost", open ? "채팅 닫기" : "💬 채팅"); c.setAttribute("aria-expanded", open);
+      c.onclick = () => { if (chat.open.has(m.id)) chat.open.delete(m.id); else { chat.open.add(m.id); pullChat(m.id); } render(); };
+      row.append(c);
+    }
     if (m.mine){
-      const b = el("button","link","내가 연 밥약 · 취소하기"); b.onclick = () => act(() => api.cancel(m.id), "밥약을 취소했어요"); row.append(b);
+      const b = el("button","link","내가 연 밥약 · 취소하기"); b.onclick = () => act(async () => { await api.cancel(m.id); resetChat(m.id); }, "밥약을 취소했어요"); row.append(b);
     } else if (m.joined){
       row.append(el("span","full-tag","✓ 참여 중"));
-      const b = el("button","link","참여 취소"); b.onclick = () => act(() => api.leave(m.id), "참여를 취소했어요"); row.append(b);
+      const b = el("button","link","참여 취소"); b.onclick = () => act(async () => { await api.leave(m.id); resetChat(m.id); }, "참여를 취소했어요"); row.append(b);
     } else if (left > 0 && d > Date.now()){
       const b = el("button","btn join","나도 갈래요"); b.onclick = () => {
         const n = myName(); if (!n){ $("myName").focus(); return toast("위에 이름부터 적어 주세요", true); }
@@ -273,13 +341,19 @@ function render(){
       row.append(b);
     } else row.append(el("span","full-tag", left>0 ? "시간이 지났어요" : "자리가 다 찼어요"));
     body.append(row);
+    if ((m.mine || m.joined) && chat.open.has(m.id)){
+      const n = chatNode(m); body.append(n);
+      if (chat.msgs.has(m.id)) drawMsgs(m.id);
+    }
 
     li.append(stub, body); list.append(li);
   }
 }
 
 async function load(quiet){
-  try { rows = await api.list(); render(); }
+  try { rows = await api.list();
+    if (quiet && document.activeElement && document.activeElement.closest(".chat")) return;
+    render(); }
   catch(e){ if (!quiet) toast(e.message, true); }
 }
 async function act(fn, ok){
